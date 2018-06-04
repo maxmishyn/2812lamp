@@ -1,43 +1,21 @@
-#include <ClickEncoder.h>
-#include <TimerOne.h>
-#include <FastLED.h>
+# 1 "c:\\Users\\maxim\\Documents\\DIY\\led-lava-lamp\\2812lamp\\2812lamp.ino"
+# 1 "c:\\Users\\maxim\\Documents\\DIY\\led-lava-lamp\\2812lamp\\2812lamp.ino"
+# 2 "c:\\Users\\maxim\\Documents\\DIY\\led-lava-lamp\\2812lamp\\2812lamp.ino" 2
+# 3 "c:\\Users\\maxim\\Documents\\DIY\\led-lava-lamp\\2812lamp\\2812lamp.ino" 2
+# 4 "c:\\Users\\maxim\\Documents\\DIY\\led-lava-lamp\\2812lamp\\2812lamp.ino" 2
+# 24 "c:\\Users\\maxim\\Documents\\DIY\\led-lava-lamp\\2812lamp\\2812lamp.ino"
+CRGB leds[(15 * 15)];
 
-#define DEBUG_OUTBUT 0
-
-#define ENC_HALFSTEP 0
-
-#define MODE_COUNT 2
-
-#define LED_PIN 4
-#define COLOR_ORDER GRB
-#define CHIPSET WS2811
-#define NUM_ROWS 15
-#define NUM_COLS 15
-#define NUM_LEDS (NUM_ROWS * NUM_COLS)
-#define FRAMES_PER_SECOND 60
-
-#define PSU_MAX_MAMPS 500 
-#define button_pin 5
-#define enup_pin 7
-#define endown_pin 6
-
-#define petentiometer_pin A1
-
-CRGB leds[NUM_LEDS];
-
-#include "ColorPalettes.h"
+# 27 "c:\\Users\\maxim\\Documents\\DIY\\led-lava-lamp\\2812lamp\\2812lamp.ino" 2
 
 CRGBPalette32 current_flame_palette = flame_palette_fire;
 
-byte matrix[NUM_ROWS][NUM_COLS];
+byte matrix[15][15];
 
 ClickEncoder *encoder;
 int16_t last, value;
 
 int brightness = 512;
-
-// encoder globals
-int last_encoder_position;
 
 // controls state
 int mode = 0;
@@ -57,51 +35,24 @@ unsigned long time, renderTime;
 void timerIsr()
 {
     encoder->service();
-    last_encoder_position = encoder->getValue();
-    ClickEncoder::Button butt = encoder->getButton(); 
-    if (butt != ClickEncoder::Open)
-    {
-        switch (butt)
-        {
-        case ClickEncoder::Pressed:
-            break;
-        case ClickEncoder::Held:
-            hold = 1;
-            break;
-        case ClickEncoder::Released:
-            hold = 0;
-            break;
-        case ClickEncoder::Clicked:
-            mode++;
-            if (mode >= MODE_COUNT)
-            {
-                mode = 0;
-            }
-            break;
-        case ClickEncoder::DoubleClicked:
-            break;
-        }
-    }
 }
 
 void setup()
 {
     delay(500); // sanity delay
 
-    FastLED.setMaxPowerInVoltsAndMilliamps(5, PSU_MAX_MAMPS);   // V, mA
+    FastLED.setMaxPowerInVoltsAndMilliamps(5, 2000); // V, mA
 
-    FastLED.addLeds<CHIPSET, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
+    FastLED.addLeds<WS2811, 4, GRB>(leds, (15 * 15)).setCorrection(TypicalLEDStrip);
     FastLED.setBrightness(brightness >> 2);
 
-#ifdef DEBUG_OUTBUT
-    Serial.begin(9600);
-#endif
 
-    pinMode(enup_pin, INPUT_PULLUP);
-    pinMode(endown_pin, INPUT_PULLUP);
-    pinMode(button_pin, INPUT);
-    
-    encoder = new ClickEncoder(enup_pin, endown_pin, button_pin);
+    Serial.begin(9600);
+    pinMode(7, 0x2);
+    pinMode(6, 0x2);
+    pinMode(5, 0x0);
+
+    encoder = new ClickEncoder(7, 6, 5);
 
     Timer1.initialize(1000);
     Timer1.attachInterrupt(timerIsr);
@@ -111,15 +62,17 @@ void setup()
 
 void loop()
 {
-    int newBrightness = analogRead(petentiometer_pin);
+    int raw = encoder->getValue();
+
+    int newBrightness = analogRead(A1);
     if (newBrightness!=brightness) {
         brightness = newBrightness;
         FastLED.setBrightness(brightness >> 2);
     }
 
-    if ((value+last_encoder_position) != last )
+    if ((value+raw) != last )
     {
-        value += last_encoder_position;
+        value += raw;
         last = value;
         switch (mode) {
             case 0:
@@ -127,7 +80,7 @@ void loop()
                     time = millis();
                     if (hold)
                     {
-                        flame_dissipation += last_encoder_position * 2;
+                        flame_dissipation += raw * 2;
                         if (flame_dissipation < 1)
                         {
                             flame_dissipation = 1;
@@ -135,29 +88,44 @@ void loop()
                     }
                     else
                     {
-                        if (last_encoder_position > 0)
+                        if (raw > 0)
                         {
                             flame_palette++;
                         }
-                        if (last_encoder_position < 0)
+                        if (raw < 0)
                         {
                             flame_palette--;
                         }
-                        if (flame_palette >= gFlamePalettesCount)
+                        if (flame_palette > 4)
                         {
                             flame_palette = 0;
                         }
                         if (flame_palette < 0)
                         {
-                            flame_palette = gFlamePalettesCount-1;
+                            flame_palette = 4;
                         }
-                        current_flame_palette = gFlamePalettes[flame_palette];
+                        switch (flame_palette)
+                        {
+                        case 0:
+                            current_flame_palette = flame_palette_fire;
+                            break;
+                        case 1:
+                            current_flame_palette = flame_palette_blue;
+                            break;
+                        case 2:
+                            current_flame_palette = flame_palette_hotwarm;
+                            break;
+                        case 3:
+                            current_flame_palette = flame_palette_green;
+                            break;
+                        case 4:
+                            current_flame_palette = flame_palette_violette;
+                            break;
+                        }
                     }
                 }
-
-#ifdef DEBUG_OUTBUT
-                Serial.print(" last_encoder_position: ");
-                Serial.print(last_encoder_position);
+                Serial.print(" RAW: ");
+                Serial.print(raw);
                 Serial.print(" hold: ");
                 Serial.print(hold);
                 Serial.print("  Flame settings: ");
@@ -170,13 +138,11 @@ void loop()
                 Serial.print(flame_palette);
                 Serial.print("; brightness: ");
                 Serial.println(brightness);
-#endif
-
                 break;
             case 1:
                 if (hold)
                 {
-                    lamp_saturation += last_encoder_position * 8;
+                    lamp_saturation += raw * 2;
                     if (lamp_saturation < 0)
                     {
                         lamp_saturation = 1;
@@ -187,7 +153,7 @@ void loop()
                 }
                 else
                 {
-                    lamp_hue += last_encoder_position * 8;
+                    lamp_hue += raw * 2;
                     if (lamp_hue < 0)
                     {
                         lamp_hue = 255 ;
@@ -197,9 +163,8 @@ void loop()
                         lamp_hue = 0;
                     }
                 }
-#ifdef DEBUG_OUTBUT
-                Serial.print(" last_encoder_position: ");
-                Serial.print(last_encoder_position);
+                Serial.print(" RAW: ");
+                Serial.print(raw);
                 Serial.print(" hold: ");
                 Serial.print(hold);
                 Serial.print("Lamp settings: ");
@@ -211,15 +176,38 @@ void loop()
                 Serial.print(lamp_saturation);
                 Serial.print("; brightness: ");
                 Serial.println(brightness);
-#endif
+
                 break;
         }
-        
+
+    }
+
+    ClickEncoder::Button b = encoder->getButton();
+    if (b != ClickEncoder::Open)
+    {
+        switch (b) {
+            case ClickEncoder::Pressed:
+                break;
+            case ClickEncoder::Held:
+                hold = 1;
+                break;
+            case ClickEncoder::Released:
+                hold = 0;
+                break;
+            case ClickEncoder::Clicked:
+                mode++;
+                if (mode >= 2) {
+                    mode = 0;
+                }
+                break;
+            case ClickEncoder::DoubleClicked:
+                break;
+        }
     }
 
     switch (mode) {
         case 0:
-            if ((millis() - renderTime) >= (1000 / FRAMES_PER_SECOND)) {
+            if ((millis() - renderTime) >= (1000 / 60)) {
                 Fire2012();
                 PutMatrix();
                 renderTime = millis();
@@ -227,37 +215,37 @@ void loop()
             }
             break;
         case 1:
-            fill_solid(leds, NUM_LEDS, CHSV(lamp_hue, lamp_saturation, brightness>>2));
+            fill_solid(leds, (15 * 15), CHSV(lamp_hue, lamp_saturation, brightness>>2));
             FastLED.show();
             break;
         }
 }
 
-#define SPARKING 130
-void Fire2012() 
+
+void Fire2012()
 {
     // Step 1.  Cool down every cell a little
-    for (int j = 0; j < NUM_COLS; j++)
+    for (int j = 0; j < 15; j++)
     {
-        for (int i = 0; i < NUM_ROWS; i++)
+        for (int i = 0; i < 15; i++)
         {
-            matrix[i][j] = qsub8(matrix[i][j], random8(0, ((flame_dissipation * 10) / NUM_ROWS) + 2));
+            matrix[i][j] = qsub8(matrix[i][j], random8(0, ((flame_dissipation * 10) / 15) + 2));
         }
     }
 
     // Step 2.  Heat from each cell drifts 'up' and diffuses a little
-    for (int j = 0; j < NUM_COLS; j++)
+    for (int j = 0; j < 15; j++)
     {
-        for (int k = NUM_ROWS - 1; k > 2; k--)
+        for (int k = 15 - 1; k > 2; k--)
         {
             matrix[k][j] = (matrix[k - 1][j] + matrix[k - 2][j] + matrix[k - 2][j]) / 3;
         }
     }
 
     // Step 3.  Randomly ignite new 'sparks' of heat near the bottom
-    for (int j = 0; j < NUM_COLS; j++)
+    for (int j = 0; j < 15; j++)
     {
-        if (random8() < SPARKING) {
+        if (random8() < 130) {
             int y = random8(7);
             matrix[y][j] = qadd8(matrix[y][j], random8(160, 255));
         }
@@ -267,17 +255,19 @@ void Fire2012()
 void PutMatrix()
 {
     int i = 0;
-    for (int c = 0; c < NUM_COLS; c++)
+    for (int c = 0; c < 15; c++)
     {
-        for (int r = 0; r < NUM_ROWS; r++)
+        for (int r = 0; r < 15; r++)
         {
-            if ( (c % 2) == 0 ) {
+            if ( c % 2 ) {
                 leds[i] = ColorFromPalette(current_flame_palette, matrix[r][c]);
             } else {
-                leds[i] = ColorFromPalette(current_flame_palette, matrix[(NUM_ROWS-1)-r][c]);
+                leds[i] = ColorFromPalette(current_flame_palette, matrix[(15 -1)-r][c]);
             }
             i++;
         }
+        //remove. debug
+        i++;
     }
     FastLED.show();
 }

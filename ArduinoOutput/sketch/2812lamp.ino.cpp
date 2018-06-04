@@ -1,8 +1,9 @@
+#include <Arduino.h>
+#line 1 "c:\\Users\\maxim\\Documents\\DIY\\led-lava-lamp\\2812lamp\\2812lamp.ino"
+#line 1 "c:\\Users\\maxim\\Documents\\DIY\\led-lava-lamp\\2812lamp\\2812lamp.ino"
 #include <ClickEncoder.h>
 #include <TimerOne.h>
 #include <FastLED.h>
-
-#define DEBUG_OUTBUT 0
 
 #define ENC_HALFSTEP 0
 
@@ -16,7 +17,7 @@
 #define NUM_LEDS (NUM_ROWS * NUM_COLS)
 #define FRAMES_PER_SECOND 60
 
-#define PSU_MAX_MAMPS 500 
+#define PSU_MAX_MAMPS 2000 
 #define button_pin 5
 #define enup_pin 7
 #define endown_pin 6
@@ -36,9 +37,6 @@ int16_t last, value;
 
 int brightness = 512;
 
-// encoder globals
-int last_encoder_position;
-
 // controls state
 int mode = 0;
 int hold = 0;
@@ -54,34 +52,20 @@ int lamp_saturation = 200;
 
 unsigned long time, renderTime;
 
+#line 52 "c:\\Users\\maxim\\Documents\\DIY\\led-lava-lamp\\2812lamp\\2812lamp.ino"
+void timerIsr();
+#line 57 "c:\\Users\\maxim\\Documents\\DIY\\led-lava-lamp\\2812lamp\\2812lamp.ino"
+void setup();
+#line 80 "c:\\Users\\maxim\\Documents\\DIY\\led-lava-lamp\\2812lamp\\2812lamp.ino"
+void loop();
+#line 242 "c:\\Users\\maxim\\Documents\\DIY\\led-lava-lamp\\2812lamp\\2812lamp.ino"
+void Fire2012();
+#line 272 "c:\\Users\\maxim\\Documents\\DIY\\led-lava-lamp\\2812lamp\\2812lamp.ino"
+void PutMatrix();
+#line 52 "c:\\Users\\maxim\\Documents\\DIY\\led-lava-lamp\\2812lamp\\2812lamp.ino"
 void timerIsr()
 {
     encoder->service();
-    last_encoder_position = encoder->getValue();
-    ClickEncoder::Button butt = encoder->getButton(); 
-    if (butt != ClickEncoder::Open)
-    {
-        switch (butt)
-        {
-        case ClickEncoder::Pressed:
-            break;
-        case ClickEncoder::Held:
-            hold = 1;
-            break;
-        case ClickEncoder::Released:
-            hold = 0;
-            break;
-        case ClickEncoder::Clicked:
-            mode++;
-            if (mode >= MODE_COUNT)
-            {
-                mode = 0;
-            }
-            break;
-        case ClickEncoder::DoubleClicked:
-            break;
-        }
-    }
 }
 
 void setup()
@@ -93,10 +77,8 @@ void setup()
     FastLED.addLeds<CHIPSET, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
     FastLED.setBrightness(brightness >> 2);
 
-#ifdef DEBUG_OUTBUT
-    Serial.begin(9600);
-#endif
 
+    Serial.begin(9600);
     pinMode(enup_pin, INPUT_PULLUP);
     pinMode(endown_pin, INPUT_PULLUP);
     pinMode(button_pin, INPUT);
@@ -111,15 +93,17 @@ void setup()
 
 void loop()
 {
+    int raw = encoder->getValue();
+
     int newBrightness = analogRead(petentiometer_pin);
     if (newBrightness!=brightness) {
         brightness = newBrightness;
         FastLED.setBrightness(brightness >> 2);
     }
 
-    if ((value+last_encoder_position) != last )
+    if ((value+raw) != last )
     {
-        value += last_encoder_position;
+        value += raw;
         last = value;
         switch (mode) {
             case 0:
@@ -127,7 +111,7 @@ void loop()
                     time = millis();
                     if (hold)
                     {
-                        flame_dissipation += last_encoder_position * 2;
+                        flame_dissipation += raw * 2;
                         if (flame_dissipation < 1)
                         {
                             flame_dissipation = 1;
@@ -135,29 +119,44 @@ void loop()
                     }
                     else
                     {
-                        if (last_encoder_position > 0)
+                        if (raw > 0)
                         {
                             flame_palette++;
                         }
-                        if (last_encoder_position < 0)
+                        if (raw < 0)
                         {
                             flame_palette--;
                         }
-                        if (flame_palette >= gFlamePalettesCount)
+                        if (flame_palette > 4)
                         {
                             flame_palette = 0;
                         }
                         if (flame_palette < 0)
                         {
-                            flame_palette = gFlamePalettesCount-1;
+                            flame_palette = 4;
                         }
-                        current_flame_palette = gFlamePalettes[flame_palette];
+                        switch (flame_palette)
+                        {
+                        case 0:
+                            current_flame_palette = flame_palette_fire;
+                            break;
+                        case 1:
+                            current_flame_palette = flame_palette_blue;
+                            break;
+                        case 2:
+                            current_flame_palette = flame_palette_hotwarm;
+                            break;
+                        case 3:
+                            current_flame_palette = flame_palette_green;
+                            break;
+                        case 4:
+                            current_flame_palette = flame_palette_violette;
+                            break;
+                        }
                     }
                 }
-
-#ifdef DEBUG_OUTBUT
-                Serial.print(" last_encoder_position: ");
-                Serial.print(last_encoder_position);
+                Serial.print(" RAW: ");
+                Serial.print(raw);
                 Serial.print(" hold: ");
                 Serial.print(hold);
                 Serial.print("  Flame settings: ");
@@ -170,13 +169,11 @@ void loop()
                 Serial.print(flame_palette);
                 Serial.print("; brightness: ");
                 Serial.println(brightness);
-#endif
-
                 break;
             case 1:
                 if (hold)
                 {
-                    lamp_saturation += last_encoder_position * 8;
+                    lamp_saturation += raw * 2;
                     if (lamp_saturation < 0)
                     {
                         lamp_saturation = 1;
@@ -187,7 +184,7 @@ void loop()
                 }
                 else
                 {
-                    lamp_hue += last_encoder_position * 8;
+                    lamp_hue += raw * 2;
                     if (lamp_hue < 0)
                     {
                         lamp_hue = 255 ;
@@ -197,9 +194,8 @@ void loop()
                         lamp_hue = 0;
                     }
                 }
-#ifdef DEBUG_OUTBUT
-                Serial.print(" last_encoder_position: ");
-                Serial.print(last_encoder_position);
+                Serial.print(" RAW: ");
+                Serial.print(raw);
                 Serial.print(" hold: ");
                 Serial.print(hold);
                 Serial.print("Lamp settings: ");
@@ -211,10 +207,33 @@ void loop()
                 Serial.print(lamp_saturation);
                 Serial.print("; brightness: ");
                 Serial.println(brightness);
-#endif
+
                 break;
         }
         
+    }
+
+    ClickEncoder::Button b = encoder->getButton();
+    if (b != ClickEncoder::Open)
+    {
+        switch (b) {
+            case ClickEncoder::Pressed:
+                break;
+            case ClickEncoder::Held:
+                hold = 1;
+                break;
+            case ClickEncoder::Released:
+                hold = 0;
+                break;
+            case ClickEncoder::Clicked:
+                mode++;
+                if (mode >= MODE_COUNT) {
+                    mode = 0;
+                }
+                break;
+            case ClickEncoder::DoubleClicked:
+                break;
+        }
     }
 
     switch (mode) {
@@ -271,13 +290,16 @@ void PutMatrix()
     {
         for (int r = 0; r < NUM_ROWS; r++)
         {
-            if ( (c % 2) == 0 ) {
+            if ( c % 2 ) {
                 leds[i] = ColorFromPalette(current_flame_palette, matrix[r][c]);
             } else {
                 leds[i] = ColorFromPalette(current_flame_palette, matrix[(NUM_ROWS-1)-r][c]);
             }
             i++;
         }
+        //remove. debug
+        i++;
     }
     FastLED.show();
 }
+

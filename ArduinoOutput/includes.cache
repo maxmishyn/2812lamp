@@ -1,0 +1,87 @@
+[
+  {
+    "Sourcefile": "",
+    "Include": "",
+    "Includepath": "C:\\Users\\maxim\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.6.21\\cores\\arduino"
+  },
+  {
+    "Sourcefile": "",
+    "Include": "",
+    "Includepath": "C:\\Users\\maxim\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.6.21\\variants\\eightanaloginputs"
+  },
+  {
+    "Sourcefile": "c:\\Users\\maxim\\Documents\\DIY\\led-lava-lamp\\2812lamp\\ArduinoOutput\\sketch\\2812lamp.ino.cpp",
+    "Include": "ClickEncoder.h",
+    "Includepath": "C:\\Users\\maxim\\Documents\\Arduino\\libraries\\ClickEncoder"
+  },
+  {
+    "Sourcefile": "c:\\Users\\maxim\\Documents\\DIY\\led-lava-lamp\\2812lamp\\ArduinoOutput\\sketch\\2812lamp.ino.cpp",
+    "Include": "TimerOne.h",
+    "Includepath": "C:\\Users\\maxim\\Documents\\Arduino\\libraries\\TimerOne"
+  },
+  {
+    "Sourcefile": "c:\\Users\\maxim\\Documents\\DIY\\led-lava-lamp\\2812lamp\\ArduinoOutput\\sketch\\2812lamp.ino.cpp",
+    "Include": "FastLED.h",
+    "Includepath": "C:\\Users\\maxim\\Documents\\Arduino\\libraries\\FastLED"
+  },
+  {
+    "Sourcefile": "c:\\Users\\maxim\\Documents\\DIY\\led-lava-lamp\\2812lamp\\ArduinoOutput\\sketch\\2812lamp.ino.cpp",
+    "Include": "",
+    "Includepath": ""
+  },
+  {
+    "Sourcefile": "C:\\Users\\maxim\\Documents\\Arduino\\libraries\\ClickEncoder\\ClickEncoder.cpp",
+    "Include": "",
+    "Includepath": ""
+  },
+  {
+    "Sourcefile": "C:\\Users\\maxim\\Documents\\Arduino\\libraries\\TimerOne\\TimerOne.cpp",
+    "Include": "",
+    "Includepath": ""
+  },
+  {
+    "Sourcefile": "C:\\Users\\maxim\\Documents\\Arduino\\libraries\\FastLED\\FastLED.cpp",
+    "Include": "",
+    "Includepath": ""
+  },
+  {
+    "Sourcefile": "C:\\Users\\maxim\\Documents\\Arduino\\libraries\\FastLED\\bitswap.cpp",
+    "Include": "",
+    "Includepath": ""
+  },
+  {
+    "Sourcefile": "C:\\Users\\maxim\\Documents\\Arduino\\libraries\\FastLED\\colorpalettes.cpp",
+    "Include": "",
+    "Includepath": ""
+  },
+  {
+    "Sourcefile": "C:\\Users\\maxim\\Documents\\Arduino\\libraries\\FastLED\\colorutils.cpp",
+    "Include": "",
+    "Includepath": ""
+  },
+  {
+    "Sourcefile": "C:\\Users\\maxim\\Documents\\Arduino\\libraries\\FastLED\\hsv2rgb.cpp",
+    "Include": "",
+    "Includepath": ""
+  },
+  {
+    "Sourcefile": "C:\\Users\\maxim\\Documents\\Arduino\\libraries\\FastLED\\lib8tion.cpp",
+    "Include": "",
+    "Includepath": ""
+  },
+  {
+    "Sourcefile": "C:\\Users\\maxim\\Documents\\Arduino\\libraries\\FastLED\\noise.cpp",
+    "Include": "",
+    "Includepath": ""
+  },
+  {
+    "Sourcefile": "C:\\Users\\maxim\\Documents\\Arduino\\libraries\\FastLED\\power_mgt.cpp",
+    "Include": "",
+    "Includepath": ""
+  },
+  {
+    "Sourcefile": "C:\\Users\\maxim\\Documents\\Arduino\\libraries\\FastLED\\wiring.cpp",
+    "Include": "",
+    "Includepath": ""
+  }
+]
