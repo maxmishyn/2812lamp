@@ -1,8 +1,10 @@
 #include <ClickEncoder.h>
 #include <TimerOne.h>
 #include <FastLED.h>
+#include <EEPROMex.h>
 
 #define DEBUG_OUTBUT 0
+#define EEPROM_SETTINGS 1
 
 #define ENC_HALFSTEP 0
 
@@ -16,7 +18,7 @@
 #define NUM_LEDS (NUM_ROWS * NUM_COLS)
 #define FRAMES_PER_SECOND 60
 
-#define PSU_MAX_MAMPS 500 
+#define PSU_MAX_MAMPS 1500 
 #define button_pin 5
 #define enup_pin 7
 #define endown_pin 6
@@ -40,19 +42,19 @@ int brightness = 512;
 int last_encoder_position;
 
 // controls state
-int mode = 0;
+byte mode = 0;
 int hold = 0;
 
 // Mode specific params
 // 0: flame palette
-int flame_palette = 0;
-int flame_dissipation = 70;
+byte flame_palette = 0;
+byte flame_dissipation = 70;
 
 // 1: static lamp
-int lamp_hue = 1;
-int lamp_saturation = 200;
+byte lamp_hue = 1;
+byte lamp_saturation = 200;
 
-unsigned long time, renderTime;
+unsigned long time, renderTime, eepromTime;
 
 void timerIsr()
 {
@@ -77,6 +79,7 @@ void timerIsr()
             {
                 mode = 0;
             }
+            eepromTime = millis();
             break;
         case ClickEncoder::DoubleClicked:
             break;
@@ -96,6 +99,19 @@ void setup()
 #ifdef DEBUG_OUTBUT
     Serial.begin(9600);
 #endif
+
+    if (EEPROM_SETTINGS)
+    {
+        if (EEPROM.read(50) != 250)
+        {
+            EEPROM.write(50, 250);
+            write_eeprom();
+        }
+        else
+        {
+            read_eeprom();
+        }
+    }
 
     pinMode(enup_pin, INPUT_PULLUP);
     pinMode(endown_pin, INPUT_PULLUP);
@@ -121,6 +137,8 @@ void loop()
     {
         value += last_encoder_position;
         last = value;
+        eepromTime = millis();
+
         switch (mode) {
             case 0:
                 if ((millis()-time)>430) {
@@ -214,7 +232,6 @@ void loop()
 #endif
                 break;
         }
-        
     }
 
     switch (mode) {
@@ -230,7 +247,9 @@ void loop()
             fill_solid(leds, NUM_LEDS, CHSV(lamp_hue, lamp_saturation, brightness>>2));
             FastLED.show();
             break;
-        }
+    }
+
+    eeprom_timer();
 }
 
 #define SPARKING 130
@@ -280,4 +299,27 @@ void PutMatrix()
         }
     }
     FastLED.show();
+}
+
+void write_eeprom()
+{
+    EEPROM.updateByte(1, mode);
+    EEPROM.updateByte(2, flame_palette);
+    EEPROM.updateByte(3, lamp_hue);
+    EEPROM.updateByte(4, lamp_saturation);
+}
+void read_eeprom()
+{
+    mode = EEPROM.readByte(1);
+    flame_palette = EEPROM.readByte(2);
+    lamp_hue = EEPROM.readByte(3);
+    lamp_saturation = EEPROM.readByte(4);
+}
+void eeprom_timer()
+{
+    if ((eepromTime>0) && ((millis() - eepromTime) > 3000))
+    {
+        eepromTime = 0;
+        write_eeprom();
+    }
 }
