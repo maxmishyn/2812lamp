@@ -4,11 +4,11 @@
 #include <EEPROMex.h>
 
 #define DEBUG_OUTBUT 0
-#define EEPROM_SETTINGS 1
+#define EEPROM_SETTINGS 0
 
 #define ENC_HALFSTEP 0
 
-#define MODE_COUNT 2
+#define MODE_COUNT 3
 
 #define LED_PIN 4
 #define COLOR_ORDER GRB
@@ -28,6 +28,7 @@
 CRGB leds[NUM_LEDS];
 
 #include "ColorPalettes.h"
+// #include "TorchMode.h"
 
 CRGBPalette32 current_flame_palette = flame_palette_fire;
 
@@ -159,16 +160,18 @@ void loop()
                         }
                         if (last_encoder_position < 0)
                         {
-                            flame_palette--;
+                            if (flame_palette == 0)
+                            {
+                                flame_palette = gFlamePalettesCount - 1;
+                            } else {
+                                flame_palette--;
+                            }
                         }
                         if (flame_palette >= gFlamePalettesCount)
                         {
                             flame_palette = 0;
                         }
-                        if (flame_palette < 0)
-                        {
-                            flame_palette = gFlamePalettesCount-1;
-                        }
+                    
                         current_flame_palette = gFlamePalettes[flame_palette];
                     }
                 }
@@ -247,6 +250,14 @@ void loop()
             fill_solid(leds, NUM_LEDS, CHSV(lamp_hue, lamp_saturation, brightness>>2));
             FastLED.show();
             break;
+        case 2:
+/*            if ((millis() - renderTime) >= (1000 / FRAMES_PER_SECOND))
+            {
+                torch(matrix);
+                PutMatrix();
+                renderTime = millis();
+            }
+*/            break;
     }
 
     eeprom_timer();
@@ -317,9 +328,12 @@ void read_eeprom()
 }
 void eeprom_timer()
 {
-    if ((eepromTime>0) && ((millis() - eepromTime) > 3000))
+    if ((eepromTime > 0) && ((millis() - eepromTime) > 3000))
     {
         eepromTime = 0;
-        write_eeprom();
+        if (EEPROM_SETTINGS)
+        {
+            write_eeprom();
+        }
     }
 }
