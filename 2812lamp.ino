@@ -13,7 +13,7 @@
 #define COLOR_ORDER GRB
 #define CHIPSET WS2812
 
-#define PSU_MAX_MAMPS 1500 
+#define PSU_MAX_MAMPS 2000 
 #define button_pin 5
 #define enup_pin 7
 #define endown_pin 6
@@ -28,7 +28,8 @@ CRGBPalette32 current_flame_palette = flame_palette_fire;
 ClickEncoder *encoder;
 int16_t last, value;
 
-int brightness = 512;
+byte brightness = 0;
+int brightTimer = 1;
 
 // encoder globals
 int last_encoder_position;
@@ -123,10 +124,20 @@ void setup()
 
 void loop()
 {
-    int newBrightness = analogRead(petentiometer_pin);
-    if (newBrightness!=brightness) {
+    int newBrightness = analogRead(petentiometer_pin) >> 2;
+    if ((brightTimer > 0) && ((millis() - brightTimer) > 10))
+    {
+        brightness++;
+        FastLED.setBrightness(brightness);
+        if (brightness>=newBrightness) {
+            brightTimer = 0;
+        } else {
+            brightTimer = millis();
+        }
+    } 
+    if ((newBrightness!=brightness) && (brightTimer==0)) {
         brightness = newBrightness;
-        FastLED.setBrightness(brightness >> 2);
+        FastLED.setBrightness(brightness);
     }
 
     if ((value+last_encoder_position) != last )
