@@ -3,8 +3,7 @@
 #include <FastLED.h>
 #include <EEPROMex.h>
 
-#define DEBUG_OUTBUT 0
-#define EEPROM_SETTINGS 0
+#include "globals.h"
 
 #define ENC_HALFSTEP 0
 
@@ -12,11 +11,7 @@
 
 #define LED_PIN 4
 #define COLOR_ORDER GRB
-#define CHIPSET WS2811
-#define NUM_ROWS 15
-#define NUM_COLS 15
-#define NUM_LEDS (NUM_ROWS * NUM_COLS)
-#define FRAMES_PER_SECOND 60
+#define CHIPSET WS2812
 
 #define PSU_MAX_MAMPS 1500 
 #define button_pin 5
@@ -25,14 +20,10 @@
 
 #define petentiometer_pin A1
 
-CRGB leds[NUM_LEDS];
-
 #include "ColorPalettes.h"
-// #include "TorchMode.h"
+#include "TorchMode.h"
 
 CRGBPalette32 current_flame_palette = flame_palette_fire;
-
-byte matrix[NUM_ROWS][NUM_COLS];
 
 ClickEncoder *encoder;
 int16_t last, value;
@@ -81,6 +72,10 @@ void timerIsr()
                 mode = 0;
             }
             eepromTime = millis();
+            // reset torch
+            if (mode == 3) {
+                resetEnergy();
+            }
             break;
         case ClickEncoder::DoubleClicked:
             break;
@@ -97,7 +92,7 @@ void setup()
     FastLED.addLeds<CHIPSET, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
     FastLED.setBrightness(brightness >> 2);
 
-#ifdef DEBUG_OUTBUT
+#ifdef DEBUG_OUTPUT
     Serial.begin(9600);
 #endif
 
@@ -162,21 +157,24 @@ void loop()
                         {
                             if (flame_palette == 0)
                             {
-                                flame_palette = gFlamePalettesCount - 1;
+                                flame_palette = gFlamePalettesCount;
                             } else {
                                 flame_palette--;
                             }
                         }
-                        if (flame_palette >= gFlamePalettesCount)
+                        if (flame_palette > gFlamePalettesCount)
                         {
                             flame_palette = 0;
                         }
-                    
-                        current_flame_palette = gFlamePalettes[flame_palette];
+
+                        if (flame_palette > 0)
+                        {
+                            current_flame_palette = gFlamePalettes[flame_palette-1];
+                        }                    
                     }
                 }
 
-#ifdef DEBUG_OUTBUT
+#ifdef DEBUG_OUTPUT
                 Serial.print(" last_encoder_position: ");
                 Serial.print(last_encoder_position);
                 Serial.print(" hold: ");
@@ -218,7 +216,7 @@ void loop()
                         lamp_hue = 0;
                     }
                 }
-#ifdef DEBUG_OUTBUT
+#ifdef DEBUG_OUTPUT
                 Serial.print(" last_encoder_position: ");
                 Serial.print(last_encoder_position);
                 Serial.print(" hold: ");
@@ -243,7 +241,6 @@ void loop()
                 Fire2012();
                 PutMatrix();
                 renderTime = millis();
-                //            FastLED.delay(1000 / FRAMES_PER_SECOND);
             }
             break;
         case 1:
@@ -251,13 +248,13 @@ void loop()
             FastLED.show();
             break;
         case 2:
-/*            if ((millis() - renderTime) >= (1000 / FRAMES_PER_SECOND))
+            if ((millis() - renderTime) >= (1000 / FRAMES_PER_SECOND))
             {
-                torch(matrix);
-                PutMatrix();
+                torch();
+                FastLED.show();
                 renderTime = millis();
             }
-*/            break;
+            break;
     }
 
     eeprom_timer();
@@ -297,14 +294,21 @@ void Fire2012()
 void PutMatrix()
 {
     int i = 0;
+    int pixel;
     for (int c = 0; c < NUM_COLS; c++)
     {
         for (int r = 0; r < NUM_ROWS; r++)
         {
             if ( (c % 2) == 0 ) {
-                leds[i] = ColorFromPalette(current_flame_palette, matrix[r][c]);
+                pixel = matrix[r][c];
             } else {
-                leds[i] = ColorFromPalette(current_flame_palette, matrix[(NUM_ROWS-1)-r][c]);
+                pixel = matrix[(NUM_ROWS-1)-r][c];
+            }
+            if (flame_palette > 0 )
+            {
+                leds[i] = ColorFromPalette(current_flame_palette,pixel);
+            } else {
+                leds[i] = nonlinearEnergy(pixel);
             }
             i++;
         }
@@ -336,4 +340,21 @@ void eeprom_timer()
             write_eeprom();
         }
     }
+}
+
+CRGB nonlinearEnergy( byte energy )
+{
+    const uint8_t energymap[32] = {0, 64, 96, 112, 128, 144, 152, 160, 168, 176, 184, 184, 192, 200, 200, 208, 208, 216, 216, 224, 224, 224, 232, 232, 232, 240, 240, 240, 240, 248, 248, 248};
+    byte eb = energymap[energy >> 3];
+    byte r = red_bias;
+    byte g = green_bias;
+    byte b = blue_bias;
+    int red_energy = 180;
+    int green_energy = 20; // 145;
+    int blue_energy = 0;
+
+    r = qadd8(r, (eb * red_energy) >> 8);
+    g = qadd8(g, (eb * green_energy) >> 8);
+    b = qadd8(b, (eb * blue_energy) >> 8);
+    return CRGB(r, g, b);
 }
