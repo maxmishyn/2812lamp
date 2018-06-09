@@ -57,7 +57,7 @@ byte upside_down = 0; // if set, flame (or rather: drop) animation is upside dow
 // ==========
 
 byte nextEnergy[NUM_ROWS][NUM_COLS]; // next energy level
-byte energyMode[NUM_ROWS][NUM_COLS]; // mode how energy is calculated for this point
+byte energyMode[NUM_ROWS][4]; // mode how energy is calculated for this point
 
 enum
 {
@@ -85,6 +85,24 @@ inline void increase(byte &aByte, byte aAmount, byte aMax = 255)
         aByte = (byte)r;
 }
 
+const uint8_t energyBitMask[4] = {192, 48, 12, 3};
+const uint8_t energyBitShift[4] = {6, 4, 2, 0};
+
+void putEnergyBitMode(uint8_t row, uint8_t col, uint8_t val)
+{
+    uint8_t c = col >> 2;
+    uint8_t cb = (col) - (c << 2);
+    energyMode[row][c] = ((energyMode[row][c] & (~energyBitMask[cb])) | (val << energyBitShift[cb]));
+//   energyMode[row][col] = val;
+}
+uint8_t getEnergyBitMode(uint8_t row, uint8_t col)
+{
+    uint8_t c = col >> 2;
+    uint8_t cb = col - (c << 2);
+    return (energyMode[row][c] & energyBitMask[cb]) >> energyBitShift[cb];
+//    return energyMode[row][col];
+}
+
 uint16_t random2(uint16_t aMinOrMax, uint16_t aMax = 0)
 {
     if (aMax == 0)
@@ -106,7 +124,7 @@ void resetEnergy( )
         byte x = i - (NUM_COLS*y);
         matrix[y][x] = 0; 
         nextEnergy[y][x] = 0;
-        energyMode[y][x] = torch_passive;
+        putEnergyBitMode(y,x,torch_passive); // energyMode[y][x] = torch_passive;
     }
 }
 
@@ -117,7 +135,7 @@ void calcNextEnergy()
         for (byte y = 0; y < NUM_ROWS; y++)  
         {
             byte e = matrix[y][x]; 
-            byte m = energyMode[y][x];
+            byte m = getEnergyBitMode(y,x); //energyMode[y][x];
             switch (m)
             {
             case torch_spark:
@@ -127,7 +145,7 @@ void calcNextEnergy()
                 // cell above is temp spark, sucking up energy from this cell until empty
                 if (y < NUM_ROWS - 1)
                 {
-                    energyMode[y+1][x] = torch_spark_temp;
+                    putEnergyBitMode(y + 1, x, torch_spark_temp); //energyMode[y+1][x] = torch_spark_temp;
                 }
                 break;
             }
@@ -138,13 +156,13 @@ void calcNextEnergy()
                 if (e2 < spark_tfr)
                 {
                     // cell below is exhausted, becomes passive
-                    energyMode[y-1][x] = torch_passive;
+                    putEnergyBitMode(y-1,x,torch_passive); // energyMode[y - 1][x] = torch_passive;
                     // gobble up rest of energy
                     increase(e, e2);
                     // loose some overall energy
                     e = ((int)e * spark_cap) >> 8;
                     // this cell becomes active spark
-                    energyMode[y][x] = torch_spark;
+                    putEnergyBitMode(y,x,torch_spark); //energyMode[y][x] = torch_spark;
                 }
                 else
                 {
@@ -200,7 +218,8 @@ void calcNextColors( )
             matrix[yi][x] = e; // currentEnergy[ei] = e;
 
             if (e > 250)
-                leds[ee] = CRGB(170, 170, e); // blueish extra-bright spark
+//                leds[ee] = CRGB(170, 170, e); // blueish extra-bright spark
+                leds[ee] = CRGB(e, 120, 30); // blueish extra-bright spark
             else
             {
                 if (e > 0)
@@ -235,16 +254,17 @@ void injectRandom()
     {
 //        currentEnergy[i] = random2(flame_min, flame_max);
         matrix[0][x] = random2(flame_min, flame_max);
-        energyMode[0][x] = torch_nop;
+        putEnergyBitMode(0,x,torch_nop);  //  energyMode[0][x] = torch_nop;
     }
     // random sparks at second row
     for (byte x = 0; x < NUM_COLS; x++)
     {
-        if (energyMode[1][x] != torch_spark && random2(100) < random_spark_probability)
+//        if (energyMode[1][x] != torch_spark && random2(100) < random_spark_probability)
+        if (getEnergyBitMode(1, x) != torch_spark && random2(100) < random_spark_probability)
         {
             // currentEnergy[i] = random2(spark_min, spark_max);
             matrix[1][x] = random2(spark_min, spark_max);
-            energyMode[1][x] = torch_spark;
+            putEnergyBitMode(1,x,torch_spark);//energyMode[1][x] = torch_spark;
         }
     }
 }

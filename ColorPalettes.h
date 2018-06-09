@@ -30,10 +30,11 @@ DEFINE_GRADIENT_PALETTE(flame_palette_violette){
 
 const TProgmemRGBGradientPalettePtr gFlamePalettes[] = {
     flame_palette_fire,
-    flame_palette_blue};
-//    flame_palette_hotwarm,
-//    flame_palette_green,
-//    flame_palette_violette};
+    flame_palette_blue,
+    flame_palette_hotwarm,
+    flame_palette_green,
+    flame_palette_violette
+    };
 
 const uint8_t gFlamePalettesCount = sizeof(gFlamePalettes) / sizeof(TProgmemRGBGradientPalettePtr);
 

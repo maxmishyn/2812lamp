@@ -248,7 +248,7 @@ void loop()
             FastLED.show();
             break;
         case 2:
-            if ((millis() - renderTime) >= (1000 / FRAMES_PER_SECOND))
+            if ((millis() - renderTime) >= 5) // 120 fps
             {
                 torch();
                 FastLED.show();
