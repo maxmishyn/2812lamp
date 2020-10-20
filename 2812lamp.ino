@@ -9,7 +9,7 @@
 
 #define MODE_COUNT 3
 
-#define LED_PIN 4
+#define LED_PIN 10
 #define COLOR_ORDER GRB
 #define CHIPSET WS2812
 
@@ -19,6 +19,8 @@
 #define endown_pin 6
 
 #define petentiometer_pin A1
+
+#define turnoffTimeout 3600000
 
 #include "ColorPalettes.h"
 #include "TorchMode.h"
@@ -47,7 +49,10 @@ byte flame_dissipation = 70;
 byte lamp_hue = 1;
 byte lamp_saturation = 200;
 
-unsigned long time, renderTime, eepromTime;
+unsigned long time, renderTime, eepromTime, turnoffTime;
+
+// enable/disable turnoff timer
+byte turnoffTimer = 0;
 
 void timerIsr()
 {
@@ -79,6 +84,13 @@ void timerIsr()
             }
             break;
         case ClickEncoder::DoubleClicked:
+            if (turnoffTimer) {
+                turnoffTimer = 0;
+            } else {
+                turnoffTimer = 1;
+                turnoffTime = millis();
+            }
+            eepromTime = millis();
             break;
         }
     }
@@ -119,12 +131,35 @@ void setup()
     Timer1.initialize(1000);
     Timer1.attachInterrupt(timerIsr);
 
+    if (turnoffTimer)
+    {
+        turnoffTime = millis();
+    }
+
     last = -1;
 }
 
 void loop()
 {
+    if (turnoffTimer && ((millis() - turnoffTime) < turnoffTimeout))
+    {
+        mainLoop();
+    }
+    else if (turnoffTimer && ((millis() - turnoffTime) < (turnoffTimeout+10000))) {
+        for (int i = 0; i < NUM_LEDS; i++) {
+            leds[i] = CRGB(0, 0, 0);
+        }
+        FastLED.setBrightness(0);
+        FastLED.show();
+    }
+}
+
+void mainLoop()
+{
     int newBrightness = analogRead(petentiometer_pin) >> 2;
+    if (turnoffTimer && ((millis() - turnoffTime)>(turnoffTimeout-60000))) {
+        newBrightness = newBrightness * ((turnoffTimeout - millis() + turnoffTime) / 60000);
+    }
     if ((brightTimer > 0) && ((millis() - brightTimer) > 10))
     {
         brightness++;
@@ -333,6 +368,7 @@ void write_eeprom()
     EEPROM.updateByte(2, flame_palette);
     EEPROM.updateByte(3, lamp_hue);
     EEPROM.updateByte(4, lamp_saturation);
+    EEPROM.updateByte(5, turnoffTimer);
 }
 void read_eeprom()
 {
@@ -340,6 +376,7 @@ void read_eeprom()
     flame_palette = EEPROM.readByte(2);
     lamp_hue = EEPROM.readByte(3);
     lamp_saturation = EEPROM.readByte(4);
+    turnoffTimer = EEPROM.readByte(5);
 }
 void eeprom_timer()
 {
