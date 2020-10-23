@@ -7,7 +7,7 @@
 
 #define ENC_HALFSTEP 0
 
-#define MODE_COUNT 3
+#define MODE_COUNT 4
 
 #define LED_PIN 10
 #define COLOR_ORDER GRB
@@ -20,7 +20,7 @@
 
 #define petentiometer_pin A1
 
-#define turnoffTimeout 3600000
+#define turnoffTimeout 3600000*5
 
 #include "ColorPalettes.h"
 #include "TorchMode.h"
@@ -301,6 +301,14 @@ void mainLoop()
                 renderTime = millis();
             }
             break;
+        case 3:
+            if ((millis() - renderTime) >= (1000 / FRAMES_PER_SECOND)) {
+                IgniteFlagSparks();
+                ByFlag();
+                PutByMatrix();
+                renderTime = millis();
+            }
+            break;
     }
 
     eeprom_timer();
@@ -337,6 +345,48 @@ void Fire2012()
     }
 }
 
+void ByFlag()
+{
+    for (int x = 0; x < NUM_COLS; x++)
+    {
+        for (int i = 0; i < NUM_ROWS; i++)
+        {
+            matrix[i][x] = avg8(matrix[i][x], matrix[i][normalizeX(x + 1)]);
+        }
+    }
+}
+
+int normalizeX(int x)
+{
+    if (x < 0)
+    {
+        return NUM_COLS - 1;
+    }
+    if (x >= NUM_COLS)
+    {
+        return 0;
+    }
+    return x;
+}
+
+void IgniteFlagSparks()
+{
+    for (int curCol = 0; curCol < NUM_COLS; curCol++)
+    {
+        int ignite = random8(0, 100);
+        int i = random8(0, NUM_ROWS);
+        if ( ignite >= 80) //>200
+        {
+            matrix[i][curCol] =  qadd8(matrix[i][curCol], random8(230, 255));
+        }
+        else if (ignite < 15) //<20
+        {
+            matrix[i][curCol] = qsub8(matrix[i][curCol], random8(150, 240));
+        }
+
+    }
+}
+
 void PutMatrix()
 {
     int i = 0;
@@ -361,6 +411,39 @@ void PutMatrix()
     }
     FastLED.show();
 }
+
+void PutByMatrix()
+{
+    int i = 0;
+    int border = (int) NUM_ROWS / 3;
+    int pixel;
+    for (int c = 0; c < NUM_COLS; c++)
+    {
+        for (int r = 0; r < NUM_ROWS; r++)
+        {
+            if ((c % 2) == 0)
+            {
+                pixel = matrix[r][c];
+            }
+            else
+            {
+                pixel = matrix[(NUM_ROWS - 1) - r][c];
+            }
+
+            if (r >= (border*2) || r < border) 
+            {
+                leds[i] = CRGB(pixel, pixel, pixel);
+            }
+            else
+            {
+                leds[i] = CHSV(4, 247, pixel); //CRGB(pixel,0,0)
+            }
+            i++;
+        }
+    }
+    FastLED.show();
+}
+
 
 void write_eeprom()
 {
@@ -406,3 +489,4 @@ CRGB nonlinearEnergy( byte energy )
     b = qadd8(b, (eb * blue_energy) >> 8);
     return CRGB(r, g, b);
 }
+
